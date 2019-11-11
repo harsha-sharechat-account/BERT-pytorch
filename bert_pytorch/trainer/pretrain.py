@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 from torch.utils.data import DataLoader
-
-from ..model import BERTLM, BERT
+import numpy as np
+from bert_pytorch.model import BERTLM, BERT
 from .optim_schedule import ScheduledOptim
-
+import pickle
 import tqdm
 
 
@@ -66,12 +66,15 @@ class BERTTrainer:
         print("Total Parameters:", sum([p.nelement() for p in self.model.parameters()]))
 
     def train(self, epoch):
-        self.iteration(epoch, self.train_data)
+        return self.iteration(epoch, self.train_data)
 
     def test(self, epoch):
-        self.iteration(epoch, self.test_data, train=False)
+        return self.iteration(epoch, self.test_data, train=0)
+      
+    def extract(self,epoch):
+        self.iteration(epoch,self.test_data,train=2)
 
-    def iteration(self, epoch, data_loader, train=True):
+    def iteration(self, epoch, data_loader, train=1):
         """
         loop over the data_loader for training or testing
         if on train status, backward operation is activated
@@ -82,9 +85,14 @@ class BERTTrainer:
         :param train: boolean value of is train or test
         :return: None
         """
-        str_code = "train" if train else "test"
-
-        # Setting the tqdm progress bar
+        if train ==1:
+            str_code = "train"
+        if train ==0:
+            str_code = "test"
+        if train ==2:
+            str_code = "extract embeddings"
+            
+        # Setting the tqdm progress bar 
         data_iter = tqdm.tqdm(enumerate(data_loader),
                               desc="EP_%s:%d" % (str_code, epoch),
                               total=len(data_loader),
@@ -93,48 +101,65 @@ class BERTTrainer:
         avg_loss = 0.0
         total_correct = 0
         total_element = 0
+        
+        if train==2:
+            prev=None
+            for i, data in data_iter:
+                data = {key: value.to(self.device) for key, value in data.items()}
+                x=self.bert.forward(data["bert_input"], data["segment_label"])
+                if i>0:
+                    prev=torch.stack([prev,x],dim=0)
+                else:
+                    prev=x
+            
+            torch.save(prev, '/home/sriharshkamma/final/BERT-pytorch/tensor-pytorch.pt') 
+            
+        
+        if train ==1 or train ==0:
+            for i, data in data_iter:
+                # 0. batch_data will be sent into the device(GPU or cpu)
+                data = {key: value.to(self.device) for key, value in data.items()}
 
-        for i, data in data_iter:
-            # 0. batch_data will be sent into the device(GPU or cpu)
-            data = {key: value.to(self.device) for key, value in data.items()}
+                # 1. forward the next_sentence_prediction and masked_lm model
+                next_sent_output, mask_lm_output = self.model.forward(data["bert_input"], data["segment_label"])
 
-            # 1. forward the next_sentence_prediction and masked_lm model
-            next_sent_output, mask_lm_output = self.model.forward(data["bert_input"], data["segment_label"])
+                # 2-1. NLL(negative log likelihood) loss of is_next classification result
+                next_loss = self.criterion(next_sent_output, data["is_next"])
 
-            # 2-1. NLL(negative log likelihood) loss of is_next classification result
-            next_loss = self.criterion(next_sent_output, data["is_next"])
+                # 2-2. NLLLoss of predicting masked token word
+                mask_loss = self.criterion(mask_lm_output.transpose(1, 2), data["bert_label"])
 
-            # 2-2. NLLLoss of predicting masked token word
-            mask_loss = self.criterion(mask_lm_output.transpose(1, 2), data["bert_label"])
+                # 2-3. Adding next_loss and mask_loss : 3.4 Pre-training Procedure
+                loss = next_loss + mask_loss
 
-            # 2-3. Adding next_loss and mask_loss : 3.4 Pre-training Procedure
-            loss = next_loss + mask_loss
+                # 3. backward and optimization only in train
+                if train:
+                    self.optim_schedule.zero_grad()
+                    loss.backward()
+                    self.optim_schedule.step_and_update_lr()
 
-            # 3. backward and optimization only in train
-            if train:
-                self.optim_schedule.zero_grad()
-                loss.backward()
-                self.optim_schedule.step_and_update_lr()
+                # next sentence prediction accuracy
+                correct = next_sent_output.argmax(dim=-1).eq(data["is_next"]).sum().item()
+                avg_loss += loss.item()
+                total_correct += correct
+                total_element += data["is_next"].nelement()
 
-            # next sentence prediction accuracy
-            correct = next_sent_output.argmax(dim=-1).eq(data["is_next"]).sum().item()
-            avg_loss += loss.item()
-            total_correct += correct
-            total_element += data["is_next"].nelement()
+                post_fix = {
+                    "epoch": epoch,
+                    "iter": i,
+                    "avg_loss": avg_loss / (i + 1),
+                    "avg_acc": total_correct / total_element * 100,
+                    "loss": loss.item()
+                }
 
-            post_fix = {
-                "epoch": epoch,
-                "iter": i,
-                "avg_loss": avg_loss / (i + 1),
-                "avg_acc": total_correct / total_element * 100,
-                "loss": loss.item()
-            }
+                if i % self.log_freq == 0:
+                    data_iter.write(str(post_fix))
 
-            if i % self.log_freq == 0:
-                data_iter.write(str(post_fix))
-
-        print("EP%d_%s, avg_loss=" % (epoch, str_code), avg_loss / len(data_iter), "total_acc=",
-              total_correct * 100.0 / total_element)
+            print("EP%d_%s, avg_loss=" % (epoch, str_code), avg_loss / len(data_iter), "total_acc=",
+                  total_correct * 100.0 / total_element)
+            return avg_loss / len(data_iter)
+            
+      
 
     def save(self, epoch, file_path="output/bert_trained.model"):
         """

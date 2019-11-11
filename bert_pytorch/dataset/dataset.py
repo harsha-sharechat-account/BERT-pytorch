@@ -2,7 +2,7 @@ from torch.utils.data import Dataset
 import tqdm
 import torch
 import random
-
+import numpy as np
 
 class BERTDataset(Dataset):
     def __init__(self, corpus_path, vocab, seq_len, encoding="utf-8", corpus_lines=None, on_memory=True):
@@ -123,3 +123,22 @@ class BERTDataset(Dataset):
                 self.random_file.__next__()
             line = self.random_file.__next__()
         return line[:-1].split("\t")[1]
+    
+    def get_nearest_word(self,word):
+        if self.vocab.stoi.get(word)!=None :
+            return word
+        wlen=len(word)
+        row,cols=(wlen,wlen)
+        mat=[[0]*wlen]*wlen
+        mat=np.array(mat)
+        for i in range(1,wlen+1):
+            j=0
+            k=j+wlen-i
+            while(k<wlen+1):
+                temp=word[j:k]
+                if self.vocab.stoi.get(temp)!=  None :
+                    return temp
+                else:
+                    j+=1
+                    k+=1
+        return self.vocab.unk_index

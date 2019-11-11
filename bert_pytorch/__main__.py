@@ -2,9 +2,9 @@ import argparse
 
 from torch.utils.data import DataLoader
 
-from .model import BERT
-from .trainer import BERTTrainer
-from .dataset import BERTDataset, WordVocab
+from model import BERT
+from trainer import BERTTrainer
+from dataset import BERTDataset, WordVocab
 
 
 def train():
@@ -18,7 +18,7 @@ def train():
     parser.add_argument("-hs", "--hidden", type=int, default=256, help="hidden size of transformer model")
     parser.add_argument("-l", "--layers", type=int, default=8, help="number of layers")
     parser.add_argument("-a", "--attn_heads", type=int, default=8, help="number of attention heads")
-    parser.add_argument("-s", "--seq_len", type=int, default=20, help="maximum sequence len")
+    parser.add_argument("-s", "--seq_len", type=int, default=512, help="maximum sequence len")
 
     parser.add_argument("-b", "--batch_size", type=int, default=64, help="number of batch_size")
     parser.add_argument("-e", "--epochs", type=int, default=10, help="number of epochs")
@@ -58,14 +58,29 @@ def train():
     bert = BERT(len(vocab), hidden=args.hidden, n_layers=args.layers, attn_heads=args.attn_heads)
 
     print("Creating BERT Trainer")
+    
     trainer = BERTTrainer(bert, len(vocab), train_dataloader=train_data_loader, test_dataloader=test_data_loader,
                           lr=args.lr, betas=(args.adam_beta1, args.adam_beta2), weight_decay=args.adam_weight_decay,
                           with_cuda=args.with_cuda, cuda_devices=args.cuda_devices, log_freq=args.log_freq)
 
     print("Training Start")
+    loss_epoch_train={}
+    loss_epoch_test={}
+    best_loss=1e10
     for epoch in range(args.epochs):
-        trainer.train(epoch)
-        trainer.save(epoch, args.output_path)
-
+        loss_train=trainer.train(epoch)
+        loss_epoch_train[epoch]=loss_train
+        
+        if loss_train<best_loss:
+            best_loss=loss_train
+            trainer.save(epoch, args.output_path)
+            
         if test_data_loader is not None:
-            trainer.test(epoch)
+            loss_test=trainer.test(epoch)
+            loss_epoch_test[epoch]=loss_test
+    print('to get embedings use bert_pytorch/trainer/extract_embeddings.py')
+    #trainer.extract(0)
+    print(loss_epoch_train,loss_epoch_test)
+    #print('start debugging')
+if __name__ == "__main__":
+    train()
