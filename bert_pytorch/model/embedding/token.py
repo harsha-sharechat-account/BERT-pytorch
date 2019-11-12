@@ -13,7 +13,7 @@ class TokenEmbedding(nn.Module):
         self.embedding_dim=embed_size
         self.embedding=nn.Embedding(vocab_size, embed_size, padding_idx=0)
         self.embedding.weight.data.copy_(torch.from_numpy(embedding_array))
-        
+        self.embedding.weight.requires_grad=False
     def forward(self,x):
         return self.embedding(x)
         

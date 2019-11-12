@@ -8,6 +8,8 @@ from .optim_schedule import ScheduledOptim
 import pickle
 import tqdm
 
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 class BERTTrainer:
     """
@@ -39,22 +41,25 @@ class BERTTrainer:
         # Setup cuda device for BERT training, argument -c, --cuda should be true
         cuda_condition = torch.cuda.is_available() and with_cuda
         self.device = torch.device("cuda:0" if cuda_condition else "cpu")
-
+        
         # This BERT model will be saved every epoch
         self.bert = bert
+        
         # Initialize the BERT Language Model, with BERT model
         self.model = BERTLM(bert, vocab_size).to(self.device)
 
         # Distributed GPU training if CUDA can detect more than 1 GPU
         if with_cuda and torch.cuda.device_count() > 1:
             print("Using %d GPUS for BERT" % torch.cuda.device_count())
-            self.model = nn.DataParallel(self.model, device_ids=cuda_devices)
+            print('cuda devices=',cuda_devices)
+            self.model = nn.DataParallel(self.model, device_ids=[0,1])
 
         # Setting the train and test data loader
         self.train_data = train_dataloader
         self.test_data = test_dataloader
 
         # Setting the Adam optimizer with hyper-param
+
         self.optim = Adam(self.model.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
         self.optim_schedule = ScheduledOptim(self.optim, self.bert.hidden, n_warmup_steps=warmup_steps)
 
@@ -62,8 +67,8 @@ class BERTTrainer:
         self.criterion = nn.NLLLoss(ignore_index=0)
 
         self.log_freq = log_freq
-
-        print("Total Parameters:", sum([p.nelement() for p in self.model.parameters()]))
+        print("Total Params:", sum([p.nelement() for p in self.model.parameters()]),\
+              'train params =',count_parameters(self.model))
 
     def train(self, epoch):
         return self.iteration(epoch, self.train_data)
