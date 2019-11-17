@@ -183,8 +183,13 @@ class BERTTrainer:
         :param file_path: model output path which gonna be file_path+"ep%d" % epoch
         :return: final_output_path
         """
-        output_path = file_path + ".ep%d" % epoch
+        output_path = file_path + "complete_model.ep%d" % epoch
         torch.save(self.model.cpu(), output_path)
         self.model.to(self.device)
+        
+        output_path_bert = file_path + "bert_only.ep%d" % epoch
+        torch.save(self.bert.cpu(), output_path_bert)
+        self.bert.to(self.device)
+        
         print("EP:%d Model Saved on:" % epoch, output_path)
         return output_path
