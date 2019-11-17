@@ -237,3 +237,4 @@ class BERT(nn.Module):
 import pdb;pdb.set_trace()    
 model=BERT(874,256,1,1)
 model.load_state_dict(torch.load('/home/sriharshkamma/final/BERT-pytorch/output/bert.model.ep9'))
+print(model)

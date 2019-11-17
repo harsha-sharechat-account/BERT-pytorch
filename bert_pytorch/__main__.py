@@ -34,6 +34,7 @@ def train():
     parser.add_argument("--adam_weight_decay", type=float, default=0.01, help="weight_decay of adam")
     parser.add_argument("--adam_beta1", type=float, default=0.9, help="adam first beta value")
     parser.add_argument("--adam_beta2", type=float, default=0.999, help="adam first beta value")
+    parser.add_argument("-restore_model_path","--restore_model_path", type=str, default=None, help="trained model path")
 
     args = parser.parse_args()
 
@@ -59,9 +60,12 @@ def train():
 
     print("Creating BERT Trainer")
     
+    #import pdb;pdb.set_trace()
+    
     trainer = BERTTrainer(bert, len(vocab), train_dataloader=train_data_loader, test_dataloader=test_data_loader,
                           lr=args.lr, betas=(args.adam_beta1, args.adam_beta2), weight_decay=args.adam_weight_decay,
-                          with_cuda=args.with_cuda, cuda_devices=args.cuda_devices, log_freq=args.log_freq)
+                          with_cuda=args.with_cuda, cuda_devices=args.cuda_devices, log_freq=args.log_freq,
+                          restore_model_path=args.restore_model_path)
 
     print("Training Start")
     loss_epoch_train={}

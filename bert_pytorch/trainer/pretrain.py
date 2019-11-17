@@ -25,7 +25,7 @@ class BERTTrainer:
     def __init__(self, bert: BERT, vocab_size: int,
                  train_dataloader: DataLoader, test_dataloader: DataLoader = None,
                  lr: float = 1e-4, betas=(0.9, 0.999), weight_decay: float = 0.01, warmup_steps=10000,
-                 with_cuda: bool = True, cuda_devices=None, log_freq: int = 10):
+                 with_cuda: bool = True, cuda_devices=None, log_freq: int = 10, restore_model_path=None):
         """
         :param bert: BERT model which you want to train
         :param vocab_size: total word vocab size
@@ -42,17 +42,26 @@ class BERTTrainer:
         cuda_condition = torch.cuda.is_available() and with_cuda
         self.device = torch.device("cuda" if cuda_condition else "cpu")#torch.device("cuda:0" if cuda_condition else "cpu")
         
+        # restore model from epoch 
+        self.restore_model_path=restore_model_path
+        
         # This BERT model will be saved every epoch
         self.bert = bert
+        #import pdb;pdb.set_trace()
         print('self.device=',self.device)
         # Initialize the BERT Language Model, with BERT model
-        self.model = BERTLM(bert, vocab_size).to(self.device)
+        if restore_model_path==None:
+            self.model = BERTLM(bert, vocab_size).to(self.device)
+        else:
+            
+            self.model=torch.load(self.restore_model_path)
+            self.model.to(self.device)
 
         # Distributed GPU training if CUDA can detect more than 1 GPU
         if with_cuda and torch.cuda.device_count() > 1:
             print("Using %d GPUS for BERT" % torch.cuda.device_count())
             print('cuda devices=',cuda_devices)
-            self.model = nn.DataParallel(self.model, device_ids=[0,1])
+            self.model = nn.DataParallel(self.model, device_ids=[0])
 
         # Setting the train and test data loader
         self.train_data = train_dataloader
@@ -175,7 +184,7 @@ class BERTTrainer:
         :return: final_output_path
         """
         output_path = file_path + ".ep%d" % epoch
-        torch.save(self.bert.cpu(), output_path)
-        self.bert.to(self.device)
+        torch.save(self.model.cpu(), output_path)
+        self.model.to(self.device)
         print("EP:%d Model Saved on:" % epoch, output_path)
         return output_path
