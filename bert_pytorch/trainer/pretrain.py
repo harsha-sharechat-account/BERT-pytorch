@@ -125,8 +125,7 @@ class BERTTrainer:
                     prev=torch.stack([prev,x],dim=0)
                 else:
                     prev=x
-            
-            torch.save(prev, '/home/sriharshkamma/final/BERT-pytorch/tensor-pytorch.pt') 
+            torch.save(prev,'/home/sriharshkamma/final/BERT-pytorch/tensor-pytorch.pt') 
             
         
         if train ==1 or train ==0:

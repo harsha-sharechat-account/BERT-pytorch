@@ -82,8 +82,11 @@ def train():
     
     train_sentencepiece_model(args.path_to_text_data,args.vocab_size)
     create_vocab_file(os.getcwd()+'/model_sentencepiece.model',os.getcwd(),'vocabfile')
+    print('vocab file created')
     change_data_to_input_format(args.path_to_text_data,args.path_to_modified_text_data,os.getcwd()+'/model_sentencepiece.model')
+    print('imput format created')
     train_fasttext_model(args.path_to_modified_text_data,args.path_to_fasttext_model)
+    print('fasttext model created')
     create_fasttext_embeddings(os.getcwd()+'/vocabfile.small',args.path_to_fasttext_model,'./fasttext_vectors.npy')
     #'/home/sriharshkamma/model_filename_big.bin'
    
