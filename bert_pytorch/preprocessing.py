@@ -68,7 +68,7 @@ def create_fasttext_embeddings(vocab_file_path,fasttext_model_bin_path,path_to_s
     np.save(path_to_save_fasttext_embeddings,arr)
     
 def train_fasttext_model(input_text_file,save_model_path):  
-    model=fasttext.train_unsupervised(input_text_file,model='skipgram',wordNgrams=3,verbose=1,dim=100,epoch=100)
+    model=fasttext.train_unsupervised(input_text_file,model='skipgram',wordNgrams=3,verbose=1,dim=100,epoch=10)
     model.save_model(save_model_path)
 def train():
     parser = argparse.ArgumentParser()
@@ -80,11 +80,11 @@ def train():
     
     args = parser.parse_args()
     
-    train_sentencepiece_model(args.path_to_text_data,args.vocab_size)
-    create_vocab_file(os.getcwd()+'/model_sentencepiece.model',os.getcwd(),'vocabfile')
-    print('vocab file created')
-    change_data_to_input_format(args.path_to_text_data,args.path_to_modified_text_data,os.getcwd()+'/model_sentencepiece.model')
-    print('imput format created')
+#     train_sentencepiece_model(args.path_to_text_data,args.vocab_size)
+#     create_vocab_file(os.getcwd()+'/model_sentencepiece.model',os.getcwd(),'vocabfile')
+#     print('vocab file created')
+#     change_data_to_input_format(args.path_to_text_data,args.path_to_modified_text_data,os.getcwd()+'/model_sentencepiece.model')
+#     print('input format created')
     train_fasttext_model(args.path_to_modified_text_data,args.path_to_fasttext_model)
     print('fasttext model created')
     create_fasttext_embeddings(os.getcwd()+'/vocabfile.small',args.path_to_fasttext_model,'./fasttext_vectors.npy')

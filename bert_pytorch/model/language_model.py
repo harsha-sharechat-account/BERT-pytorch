@@ -9,7 +9,7 @@ class BERTLM(nn.Module):
     Next Sentence Prediction Model + Masked Language Model
     """
 
-    def __init__(self, bert: BERT, vocab_size):
+    def __init__(self, bert: BERT, vocab_size,use_ns=True):
         """
         :param bert: BERT model which should be trained
         :param vocab_size: total vocab size for masked_lm
@@ -19,10 +19,14 @@ class BERTLM(nn.Module):
         self.bert = bert
         self.next_sentence = NextSentencePrediction(self.bert.hidden)
         self.mask_lm = MaskedLanguageModel(self.bert.hidden, vocab_size)
+        self.use_ns=use_ns
 
     def forward(self, x, segment_label):
         x = self.bert(x, segment_label)
-        return self.next_sentence(x), self.mask_lm(x)
+        if not use_ns:
+            return self.next_sentence(x),None#, self.mask_lm(x)
+        else:
+            return self.next_sentence(x), self.mask_lm(x)
 
 
 class NextSentencePrediction(nn.Module):
@@ -59,3 +63,22 @@ class MaskedLanguageModel(nn.Module):
 
     def forward(self, x):
         return self.softmax(self.linear(x))
+class BERTLM_2(nn.Module):
+    """
+    BERT Language Model
+    Next Sentence Prediction Model + Masked Language Model
+    """
+
+    def __init__(self, bert: BERT, vocab_size):
+        """
+        :param bert: BERT model which should be trained
+        :param vocab_size: total vocab size for masked_lm
+        """
+
+        super().__init__()
+        self.bert = bert
+        self.mask_lm = MaskedLanguageModel(self.bert.hidden, vocab_size)
+
+    def forward(self, x, segment_label):
+        x = self.bert(x, segment_label)
+        return self.mask_lm(x)

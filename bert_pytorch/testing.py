@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 
 from model import BERT
 from trainer import BERTTrainer
-from dataset import BERTDataset, WordVocab
+from dataset import BERTDataset, WordVocab , BERTDataset_embed
 
 
 def train():
@@ -44,11 +44,11 @@ def train():
     print("Vocab Size: ", len(vocab))
 
     print("Loading Train Dataset", args.train_dataset)
-    train_dataset = BERTDataset(args.train_dataset, vocab, seq_len=args.seq_len,
+    train_dataset = BERTDataset_embed(args.train_dataset, vocab, seq_len=args.seq_len,
                                 corpus_lines=args.corpus_lines, on_memory=args.on_memory)
 
     print("Loading Test Dataset", args.test_dataset)
-    test_dataset = BERTDataset(args.test_dataset, vocab, seq_len=args.seq_len, on_memory=args.on_memory) \
+    test_dataset = BERTDataset_embed(args.test_dataset, vocab, seq_len=args.seq_len, on_memory=args.on_memory) \
         if args.test_dataset is not None else None
 
     print("Creating Dataloader")
@@ -72,19 +72,9 @@ def train():
     loss_epoch_train={}
     loss_epoch_test={}
     best_loss=1e10
-    for epoch in range(args.epochs+args.restart_epoch):
-        loss_train=trainer.train(epoch)
-        loss_epoch_train[epoch]=loss_train
-        
-        if loss_train<best_loss:
-            best_loss=loss_train
-            trainer.save(epoch, args.output_path)
-            
-        if test_data_loader is not None:
-            loss_test=trainer.test(epoch)
-            loss_epoch_test[epoch]=loss_test
+
     print('to get embedings use bert_pytorch/trainer/extract_embeddings.py')
-    #trainer.extract(0)
+    trainer.extract(0)
     print(loss_epoch_train,loss_epoch_test)
     #print('start debugging')
 if __name__ == "__main__":
